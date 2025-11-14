@@ -6,9 +6,9 @@ export default defineEventHandler(async (event) => {
   try {
     // 查詢最新 10 筆新聞快取
     const { results } = await db.prepare(
-      `SELECT title, url, source, time 
+      `SELECT id, updated, data 
        FROM cache 
-       ORDER BY time DESC 
+       ORDER BY updated DESC 
        LIMIT 50`
     ).all()
 
