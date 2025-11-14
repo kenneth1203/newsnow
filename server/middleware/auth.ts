@@ -1,7 +1,6 @@
 import process from "node:process"
 import { jwtVerify } from "jose"
 
-
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
   if (!url.pathname.startsWith("/api")) return
