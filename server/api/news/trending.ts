@@ -1,3 +1,4 @@
+// server/api/news/trending.ts
 export default defineEventHandler(async (event) => {
   // 使用你在 wrangler.toml 裡設定的 binding 名稱
   const db = event.context.cloudflare.env.NEWSNOW_DB
@@ -33,3 +34,4 @@ export default defineEventHandler(async (event) => {
       details: err.message
     }
   }
+})
