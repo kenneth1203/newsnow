@@ -1,6 +1,7 @@
 name = "newsnow"
 pages_build_output_dir = "dist/output/public"
 compatibility_date = "2024-10-03"
+BASE_URL = "https://news.kenneth1203.dpdns.org/"
 
 [[d1_databases]]
 binding = "NEWSNOW_DB"
