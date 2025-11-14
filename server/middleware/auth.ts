@@ -7,7 +7,8 @@ export default defineEventHandler(async (event) => {
   if (["JWT_SECRET", "G_CLIENT_ID", "G_CLIENT_SECRET"].find(k => !process.env[k])) {
     event.context.disabledLogin = true
     if (["/api/s", "/api/proxy", "/api/latest", "/api/mcp"].every(p => !url.pathname.startsWith(p)))
-      throw createError({ statusCode: 506, message: "Server not configured, disable login" })
+      //throw createError({ statusCode: 506, message: "Server not configured, disable login" })
+      console.log("Login disabled, but API still works");
   } else {
     if (["/api/s", "/api/me"].find(p => url.pathname.startsWith(p))) {
       const token = getHeader(event, "Authorization")?.replace(/Bearer\s*/, "")?.trim()
