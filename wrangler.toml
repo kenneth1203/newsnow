@@ -4,7 +4,7 @@ compatibility_date = "2024-10-03"
 
 [vars]
 BASE_URL = "https://news.kenneth1203.dpdns.org/"
-ENABLE_CACHE = true
+ENABLE_CACHE = "true"
 
 [[d1_databases]]
 binding = "NEWSNOW_DB"
