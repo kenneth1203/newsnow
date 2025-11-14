@@ -1,10 +1,7 @@
-// server/api/news/trending.ts
 export default defineEventHandler(async (event) => {
-  // 使用你在 wrangler.toml 裡設定的 binding 名稱
   const db = event.context.cloudflare.env.NEWSNOW_DB
 
   try {
-    // 查詢最新 10 筆新聞快取
     const { results } = await db.prepare(
       `SELECT id, updated, data 
        FROM cache 
@@ -13,10 +10,26 @@ export default defineEventHandler(async (event) => {
     ).all()
 
     if (results && results.length > 0) {
-      return { articles: results }
+      // 把 data 欄位解析成 JSON
+      const articles = results.flatMap(r => {
+        let parsed: any[] = []
+        try {
+          parsed = JSON.parse(r.data)   // 這裡是關鍵
+        } catch {
+          parsed = [{ title: "資料解析失敗", raw: r.data }]
+        }
+        return parsed.map(item => ({
+          id: r.id,
+          updated: r.updated,
+          ...item
+        }))
+      })
+
+      // 確保回傳 JSON + UTF-8
+      event.node.res.setHeader("Content-Type", "application/json; charset=utf-8")
+      return { articles }
     }
 
-    // 如果 DB 沒有資料，回傳假資料
     return {
       articles: [
         {
