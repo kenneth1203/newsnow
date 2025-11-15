@@ -18,10 +18,14 @@ export default defineEventHandler(async (event) => {
     "wallstreetcn-quick": { category: "finance", name: "华尔街见闻 快讯" },
     "wallstreetcn-news": { category: "finance", name: "华尔街见闻 最新" },
     "cls-hot": { category: "finance", name: "财联社热门" },
+    "cls-telegraph": { category: "finance", name: "财联社電報" },
+    "cls-depth": { category: "finance", name: "财联社深度" },
     gelonghui: { category: "finance", name: "格隆汇" },
     xueqiu: { category: "finance", name: "雪球" },
+    "xueqiu-hotstock": { category: "finance", name: "雪球" },
     jin10: { category: "finance", name: "金十数据" },
-    fastbull: { category: "finance", name: "快讯通" },
+    "fastbull-news": { category: "finance", name: "快讯通" },
+    "fastbull-express": { category: "finance", name: "快讯通express" },
 
     // === 社交娱乐类 ===
     weibo: { category: "social", name: "微博" },
@@ -30,18 +34,28 @@ export default defineEventHandler(async (event) => {
     tieba: { category: "social", name: "贴吧" },
     zhihu: { category: "social", name: "知乎" },
     hupu: { category: "social", name: "虎扑" },
+    "chongbuluo-hot": { category: "social", name: "蟲部落" },
+    douban: { category: "social", name: "豆瓣" },
+    steam: { category: "social", name: "steam" },
 
     // === 科技类平台 ===
     ithome: { category: "tech", name: "IT之家" },
     juejin: { category: "tech", name: "掘金" },
     github: { category: "tech", name: "GitHub" },
+    "github-trending-today": { category: "tech", name: "GitHub" },
     hackernews: { category: "tech", name: "Hacker News" },
     solidot: { category: "tech", name: "Solidot" },
     v2ex: { category: "tech", name: "V2EX" },
     nowcoder: { category: "tech", name: "牛客网" },
     pcbeta: { category: "tech", name: "远景论坛" },
+    "pcbeta-windows11": { category: "tech", name: "远景论坛" },
     sspai: { category: "tech", name: "少数派" },
     producthunt: { category: "tech", name: "ProductHunt" }
+  }
+
+  // 簡化版分類函式：沒找到就歸到 media
+  function resolveSource(id: string) {
+    return sourceMap[id] || { category: "media", name: id }
   }
 
   try {
@@ -62,7 +76,7 @@ export default defineEventHandler(async (event) => {
         parsed = []
       }
 
-      const sanitize = (str: string) => str.replace(/[\u0000-\u001F\u007F]/g, "").trim()
+      const sanitize = (str: string) => String(str || "").replace(/[\u0000-\u001F\u007F]/g, "").trim()
 
       let items: any[] = []
       if (Array.isArray(parsed)) {
@@ -77,10 +91,8 @@ export default defineEventHandler(async (event) => {
         items = [obj]
       }
 
-      if (sourceMap[r.id]) {
-        const { category, name } = sourceMap[r.id]
-        grouped[category].push({ id: r.id, name, data: items })
-      }
+      const { category, name } = resolveSource(r.id)
+      grouped[category].push({ id: r.id, name, data: items })
     })
 
     return grouped
