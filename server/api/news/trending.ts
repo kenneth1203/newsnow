@@ -18,18 +18,26 @@ export default defineEventHandler(async (event) => {
           parsed = []
         }
 
+        // 清理字串中可能破壞 JSON 的符號
+        const sanitize = (str: string) =>
+          str.replace(/[\u0000-\u001F\u007F]/g, "").trim()
+
         // 如果 data 是陣列，展開所有 title + extra
-        let items = []
+        let items: any[] = []
         if (Array.isArray(parsed)) {
-          items = parsed.map(item => ({
-            title: item.title || "無標題",
-            extra: item.extra || {}
-          }))
+          items = parsed.map(item => {
+            const obj: any = { title: sanitize(item.title || "無標題") }
+            if (item.extra && Object.keys(item.extra).length > 0) {
+              obj.extra = item.extra
+            }
+            return obj
+          })
         } else if (parsed.title) {
-          items = [{
-            title: parsed.title,
-            extra: parsed.extra || {}
-          }]
+          const obj: any = { title: sanitize(parsed.title) }
+          if (parsed.extra && Object.keys(parsed.extra).length > 0) {
+            obj.extra = parsed.extra
+          }
+          items = [obj]
         }
 
         return {
@@ -38,23 +46,22 @@ export default defineEventHandler(async (event) => {
         }
       })
 
-      return { articles }
+      // 直接輸出陣列，不包 articles
+      return articles
     }
 
-    return {
-      articles: [
-        {
-          id: "local",
-          data: [
-            {
-              title: "暫無新聞",
-              extra: {}
-            }
-          ]
-        }
-      ]
-    }
-  } catch (err) {
+    // 沒有資料時，直接輸出一筆假資料
+    return [
+      {
+        id: "local",
+        data: [
+          {
+            title: "暫無新聞"
+          }
+        ]
+      }
+    ]
+  } catch (err: any) {
     return {
       error: true,
       message: "Database query failed",
