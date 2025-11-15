@@ -18,12 +18,20 @@ export default defineEventHandler(async (event) => {
           parsed = {}
         }
 
+        // 如果 data 是陣列，取第一筆
+        let title = "無標題"
+        let extra = {}
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          title = parsed[0].title || "無標題"
+          extra = parsed[0].extra || {}
+        } else if (parsed.title) {
+          title = parsed.title
+          extra = parsed.extra || {}
+        }
+
         return {
-          id: r.id, // 來源
-          data: {
-            title: parsed.title || "無標題",
-            extra: parsed.extra || {}
-          }
+          id: r.id,
+          data: { title, extra }
         }
       })
 
@@ -35,7 +43,7 @@ export default defineEventHandler(async (event) => {
         {
           id: "local",
           data: {
-            title: "暫無新聞",
+            title: "暫無新聞，這是測試資料",
             extra: {}
           }
         }
