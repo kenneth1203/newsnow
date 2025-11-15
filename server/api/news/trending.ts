@@ -10,33 +10,34 @@ export default defineEventHandler(async (event) => {
     ).all()
 
     if (results && results.length > 0) {
-      // 把 data 欄位解析成 JSON
-      const articles = results.flatMap(r => {
-        let parsed: any[] = []
+      const articles = results.map(r => {
+        let parsed: any = {}
         try {
-          parsed = JSON.parse(r.data)   // 這裡是關鍵
+          parsed = JSON.parse(r.data)
         } catch {
-          parsed = [{ title: "資料解析失敗", raw: r.data }]
+          parsed = {}
         }
-        return parsed.map(item => ({
-          id: r.id,
-          updated: r.updated,
-          ...item
-        }))
+
+        return {
+          id: r.id, // 來源
+          data: {
+            title: parsed.title || "無標題",
+            extra: parsed.extra || {}
+          }
+        }
       })
 
-      // 確保回傳 JSON + UTF-8
-      event.node.res.setHeader("Content-Type", "application/json; charset=utf-8")
       return { articles }
     }
 
     return {
       articles: [
         {
-          title: "暫無新聞，這是測試資料",
-          url: "https://example.com/test",
-          source: "local",
-          time: new Date().toISOString()
+          id: "local",
+          data: {
+            title: "暫無新聞",
+            extra: {}
+          }
         }
       ]
     }
