@@ -11,27 +11,30 @@ export default defineEventHandler(async (event) => {
 
     if (results && results.length > 0) {
       const articles = results.map(r => {
-        let parsed: any = {}
+        let parsed: any = []
         try {
           parsed = JSON.parse(r.data)
         } catch {
-          parsed = {}
+          parsed = []
         }
 
-        // 如果 data 是陣列，取第一筆
-        let title = "無標題"
-        let extra = {}
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          title = parsed[0].title || "無標題"
-          extra = parsed[0].extra || {}
+        // 如果 data 是陣列，展開所有 title + extra
+        let items = []
+        if (Array.isArray(parsed)) {
+          items = parsed.map(item => ({
+            title: item.title || "無標題",
+            extra: item.extra || {}
+          }))
         } else if (parsed.title) {
-          title = parsed.title
-          extra = parsed.extra || {}
+          items = [{
+            title: parsed.title,
+            extra: parsed.extra || {}
+          }]
         }
 
         return {
           id: r.id,
-          data: { title, extra }
+          data: items
         }
       })
 
@@ -42,10 +45,12 @@ export default defineEventHandler(async (event) => {
       articles: [
         {
           id: "local",
-          data: {
-            title: "暫無新聞，這是測試資料",
-            extra: {}
-          }
+          data: [
+            {
+              title: "暫無新聞",
+              extra: {}
+            }
+          ]
         }
       ]
     }
