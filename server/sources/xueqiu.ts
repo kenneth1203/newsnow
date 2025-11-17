@@ -100,6 +100,6 @@ const hotstockus = defineSource(async () => {
 export default defineSource({
   "xueqiu": hotstock,
   "xueqiu-hotstock": hotstock,
-  "xueqiu-hotstockhk": hotstock,
-  "xueqiu-hotstockus": hotstock,
+  "xueqiu-hotstockhk": hotstockhk,
+  "xueqiu-hotstockus": hotstockus,
 })
