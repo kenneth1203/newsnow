@@ -13,6 +13,36 @@ interface StockRes {
   }
 }
 
+interface StockReshk {
+  data: {
+    items:
+    {
+      code: string
+      name: string
+      percent: number
+      exchange: string
+      // 1
+      ad: number
+    }[]
+
+  }
+}
+
+interface StockResus {
+  data: {
+    items:
+    {
+      code: string
+      name: string
+      percent: number
+      exchange: string
+      // 1
+      ad: number
+    }[]
+
+  }
+}
+
 const hotstock = defineSource(async () => {
   const url = "https://stock.xueqiu.com/v5/stock/hot_stock/list.json?size=30&_type=10&type=10"
   const cookie = (await $fetch.raw("https://xueqiu.com/hq")).headers.getSetCookie()
@@ -34,7 +64,7 @@ const hotstock = defineSource(async () => {
 const hotstockhk = defineSource(async () => {
   const url = "https://stock.xueqiu.com/v5/stock/hot_stock/list.json?size=30&_type=10&type=13"
   const cookie = (await $fetch.raw("https://xueqiu.com/hq")).headers.getSetCookie()
-  const res: StockRes = await myFetch(url, {
+  const res: StockReshk = await myFetch(url, {
     headers: {
       cookie: cookie.join("; "),
     },
@@ -52,7 +82,7 @@ const hotstockhk = defineSource(async () => {
 const hotstockus = defineSource(async () => {
   const url = "https://stock.xueqiu.com/v5/stock/hot_stock/list.json?size=30&_type=10&type=11"
   const cookie = (await $fetch.raw("https://xueqiu.com/hq")).headers.getSetCookie()
-  const res: StockRes = await myFetch(url, {
+  const res: StockResus = await myFetch(url, {
     headers: {
       cookie: cookie.join("; "),
     },
