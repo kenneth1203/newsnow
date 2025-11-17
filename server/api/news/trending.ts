@@ -6,6 +6,8 @@ export default defineEventHandler(async (event) => {
   const db = event.context.cloudflare.env.NEWSNOW_DB
   const query = getQuery(event)
   const forceRefresh = query.force_refresh === "true"
+  const asyncMode = query.async === "true"
+  const maxRefresh = parseInt(query.max_refresh as string) || 0 // 限制刷新数量，0表示不限制
 
   const sourceMap: Record<string, { category: string, name: string }> = {
     // === 综合新闻媒体类 ===
@@ -71,30 +73,77 @@ export default defineEventHandler(async (event) => {
     if (forceRefresh) {
       const cacheTable = await getCacheTable()
       if (cacheTable) {
-        const popularSourceIds = Object.keys(sourceMap)
-        logger.info(`Force refreshing ${popularSourceIds.length} sources...`)
+        let popularSourceIds = Object.keys(sourceMap)
         
-        // 并行刷新所有源（限制并发数避免过载）
-        const batchSize = 5
-        for (let i = 0; i < popularSourceIds.length; i += batchSize) {
-          const batch = popularSourceIds.slice(i, i + batchSize)
-          await Promise.allSettled(
-            batch.map(async (id) => {
-              try {
-                if (sources[id] && getters[id]) {
-                  const newData = (await getters[id]()).slice(0, 30)
-                  if (newData.length > 0) {
-                    await cacheTable.set(id, newData)
-                    logger.success(`Refreshed source: ${id}`)
-                  }
-                }
-              } catch (err) {
-                logger.error(`Failed to refresh ${id}:`, err)
-              }
+        // 智能刷新：只刷新最旧的几个源
+        if (maxRefresh > 0 && maxRefresh < popularSourceIds.length) {
+          const now = Date.now()
+          const sourceAges = await Promise.all(
+            popularSourceIds.map(async (id) => {
+              const cache = await cacheTable.get(id)
+              const age = cache ? now - cache.updated : Infinity
+              return { id, age }
             })
           )
-          // 添加小延迟避免对源站造成压力
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          // 按缓存时间排序，取最旧的几个
+          popularSourceIds = sourceAges
+            .sort((a, b) => b.age - a.age)
+            .slice(0, maxRefresh)
+            .map(item => item.id)
+          logger.info(`Smart refreshing ${popularSourceIds.length} oldest sources...`)
+        } else {
+          logger.info(`Force refreshing ${popularSourceIds.length} sources...`)
+        }
+        
+        if (asyncMode) {
+          // 异步模式：立即返回当前缓存，后台刷新
+          event.context.waitUntil(
+            (async () => {
+              const batchSize = 3  // 异步模式下减少并发数
+              for (let i = 0; i < popularSourceIds.length; i += batchSize) {
+                const batch = popularSourceIds.slice(i, i + batchSize)
+                await Promise.allSettled(
+                  batch.map(async (id) => {
+                    try {
+                      if (sources[id] && getters[id]) {
+                        const newData = (await getters[id]()).slice(0, 30)
+                        if (newData.length > 0) {
+                          await cacheTable.set(id, newData)
+                          logger.success(`Async refreshed source: ${id}`)
+                        }
+                      }
+                    } catch (err) {
+                      logger.error(`Async failed to refresh ${id}:`, err)
+                    }
+                  })
+                )
+                await new Promise(resolve => setTimeout(resolve, 1500)) // 增加延迟
+              }
+              logger.success('Async refresh completed')
+            })()
+          )
+        } else {
+          // 同步模式：等待所有刷新完成
+          const batchSize = 5
+          for (let i = 0; i < popularSourceIds.length; i += batchSize) {
+            const batch = popularSourceIds.slice(i, i + batchSize)
+            await Promise.allSettled(
+              batch.map(async (id) => {
+                try {
+                  if (sources[id] && getters[id]) {
+                    const newData = (await getters[id]()).slice(0, 30)
+                    if (newData.length > 0) {
+                      await cacheTable.set(id, newData)
+                      logger.success(`Refreshed source: ${id}`)
+                    }
+                  }
+                } catch (err) {
+                  logger.error(`Failed to refresh ${id}:`, err)
+                }
+              })
+            )
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
         }
       }
     }
