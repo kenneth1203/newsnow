@@ -1,5 +1,11 @@
+import { getters } from "#/getters"
+import { getCacheTable } from "#/database/cache"
+import sources from "@shared/sources"
+
 export default defineEventHandler(async (event) => {
   const db = event.context.cloudflare.env.NEWSNOW_DB
+  const query = getQuery(event)
+  const forceRefresh = query.force_refresh === "true"
 
   const sourceMap: Record<string, { category: string, name: string }> = {
     // === 综合新闻媒体类 ===
@@ -61,6 +67,38 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // 如果强制刷新，先更新所有热门源的缓存
+    if (forceRefresh) {
+      const cacheTable = await getCacheTable()
+      if (cacheTable) {
+        const popularSourceIds = Object.keys(sourceMap)
+        logger.info(`Force refreshing ${popularSourceIds.length} sources...`)
+        
+        // 并行刷新所有源（限制并发数避免过载）
+        const batchSize = 5
+        for (let i = 0; i < popularSourceIds.length; i += batchSize) {
+          const batch = popularSourceIds.slice(i, i + batchSize)
+          await Promise.allSettled(
+            batch.map(async (id) => {
+              try {
+                if (sources[id] && getters[id]) {
+                  const newData = (await getters[id]()).slice(0, 30)
+                  if (newData.length > 0) {
+                    await cacheTable.set(id, newData)
+                    logger.success(`Refreshed source: ${id}`)
+                  }
+                }
+              } catch (err) {
+                logger.error(`Failed to refresh ${id}:`, err)
+              }
+            })
+          )
+          // 添加小延迟避免对源站造成压力
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
+    }
+
     const { results } = await db.prepare(
       `SELECT id, updated, data 
        FROM cache 
