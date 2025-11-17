@@ -23,6 +23,8 @@ export default defineEventHandler(async (event) => {
     gelonghui: { category: "finance", name: "格隆汇" },
     xueqiu: { category: "finance", name: "雪球" },
     "xueqiu-hotstock": { category: "finance", name: "雪球" },
+    "xueqiu-hotstockhk": { category: "finance", name: "雪球hk" },
+    "xueqiu-hotstockus": { category: "finance", name: "雪球us" },
     jin10: { category: "finance", name: "金十数据" },
     "fastbull-news": { category: "finance", name: "快讯通" },
     "fastbull-express": { category: "finance", name: "快讯通express" },
