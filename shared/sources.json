@@ -264,6 +264,24 @@
     "interval": 120000,
     "title": "热门股票"
   },
+  "xueqiu-hotstockhk": {
+    "name": "雪球",
+    "type": "hottest",
+    "column": "finance",
+    "home": "https://xueqiu.com",
+    "color": "blue",
+    "interval": 120000,
+    "title": "热门股票hk"
+  },
+  "xueqiu-hotstockus": {
+    "name": "雪球",
+    "type": "hottest",
+    "column": "finance",
+    "home": "https://xueqiu.com",
+    "color": "blue",
+    "interval": 120000,
+    "title": "热门股票us"
+  },
   "gelonghui": {
     "title": "事件",
     "name": "格隆汇",
