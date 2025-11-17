@@ -2,12 +2,21 @@ import { getters } from "#/getters"
 import { getCacheTable } from "#/database/cache"
 import sources from "@shared/sources"
 
+// 简单的刷新状态追踪
+const refreshStatus = {
+  isRefreshing: false,
+  lastRefreshTime: 0,
+  refreshedSources: 0,
+  totalSources: 0
+}
+
 export default defineEventHandler(async (event) => {
   const db = event.context.cloudflare.env.NEWSNOW_DB
   const query = getQuery(event)
   const forceRefresh = query.force_refresh === "true"
   const asyncMode = query.async === "true"
   const maxRefresh = parseInt(query.max_refresh as string) || 0 // 限制刷新数量，0表示不限制
+  const checkStatus = query.check_status === "true" // 检查刷新状态
 
   const sourceMap: Record<string, { category: string, name: string }> = {
     // === 综合新闻媒体类 ===
@@ -69,8 +78,21 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // 检查刷新状态
+    if (checkStatus) {
+      return {
+        status: "checking",
+        isRefreshing: refreshStatus.isRefreshing,
+        lastRefreshTime: refreshStatus.lastRefreshTime,
+        refreshedSources: refreshStatus.refreshedSources,
+        totalSources: refreshStatus.totalSources,
+        progress: refreshStatus.isRefreshing ? 
+          Math.round((refreshStatus.refreshedSources / refreshStatus.totalSources) * 100) : 0
+      }
+    }
+
     // 如果强制刷新，先更新所有热门源的缓存
-    if (forceRefresh) {
+    if (forceRefresh && !refreshStatus.isRefreshing) {
       const cacheTable = await getCacheTable()
       if (cacheTable) {
         let popularSourceIds = Object.keys(sourceMap)
@@ -95,56 +117,82 @@ export default defineEventHandler(async (event) => {
           logger.info(`Force refreshing ${popularSourceIds.length} sources...`)
         }
         
+        // 设置刷新状态
+        refreshStatus.isRefreshing = true
+        refreshStatus.lastRefreshTime = Date.now()
+        refreshStatus.refreshedSources = 0
+        refreshStatus.totalSources = popularSourceIds.length
+        
         if (asyncMode) {
           // 异步模式：立即返回当前缓存，后台刷新
           event.context.waitUntil(
             (async () => {
-              const batchSize = 3  // 异步模式下减少并发数
-              for (let i = 0; i < popularSourceIds.length; i += batchSize) {
-                const batch = popularSourceIds.slice(i, i + batchSize)
-                await Promise.allSettled(
-                  batch.map(async (id) => {
-                    try {
-                      if (sources[id] && getters[id]) {
-                        const newData = (await getters[id]()).slice(0, 30)
-                        if (newData.length > 0) {
-                          await cacheTable.set(id, newData)
-                          logger.success(`Async refreshed source: ${id}`)
+              try {
+                const batchSize = 3  // 异步模式下减少并发数
+                for (let i = 0; i < popularSourceIds.length; i += batchSize) {
+                  const batch = popularSourceIds.slice(i, i + batchSize)
+                  await Promise.allSettled(
+                    batch.map(async (id) => {
+                      try {
+                        if (sources[id] && getters[id]) {
+                          const newData = (await getters[id]()).slice(0, 30)
+                          if (newData.length > 0) {
+                            await cacheTable.set(id, newData)
+                            refreshStatus.refreshedSources++
+                            logger.success(`Async refreshed source: ${id} (${refreshStatus.refreshedSources}/${refreshStatus.totalSources})`)
+                          }
                         }
+                      } catch (err) {
+                        logger.error(`Async failed to refresh ${id}:`, err)
                       }
-                    } catch (err) {
-                      logger.error(`Async failed to refresh ${id}:`, err)
-                    }
-                  })
-                )
-                await new Promise(resolve => setTimeout(resolve, 1500)) // 增加延迟
+                    })
+                  )
+                  await new Promise(resolve => setTimeout(resolve, 1500)) // 增加延迟
+                }
+                logger.success(`Async refresh completed: ${refreshStatus.refreshedSources}/${refreshStatus.totalSources} sources refreshed`)
+              } finally {
+                refreshStatus.isRefreshing = false
               }
-              logger.success('Async refresh completed')
             })()
           )
         } else {
           // 同步模式：等待所有刷新完成
-          const batchSize = 5
-          for (let i = 0; i < popularSourceIds.length; i += batchSize) {
-            const batch = popularSourceIds.slice(i, i + batchSize)
-            await Promise.allSettled(
-              batch.map(async (id) => {
-                try {
-                  if (sources[id] && getters[id]) {
-                    const newData = (await getters[id]()).slice(0, 30)
-                    if (newData.length > 0) {
-                      await cacheTable.set(id, newData)
-                      logger.success(`Refreshed source: ${id}`)
+          try {
+            const batchSize = 5
+            for (let i = 0; i < popularSourceIds.length; i += batchSize) {
+              const batch = popularSourceIds.slice(i, i + batchSize)
+              await Promise.allSettled(
+                batch.map(async (id) => {
+                  try {
+                    if (sources[id] && getters[id]) {
+                      const newData = (await getters[id]()).slice(0, 30)
+                      if (newData.length > 0) {
+                        await cacheTable.set(id, newData)
+                        refreshStatus.refreshedSources++
+                        logger.success(`Refreshed source: ${id} (${refreshStatus.refreshedSources}/${refreshStatus.totalSources})`)
+                      }
                     }
+                  } catch (err) {
+                    logger.error(`Failed to refresh ${id}:`, err)
                   }
-                } catch (err) {
-                  logger.error(`Failed to refresh ${id}:`, err)
-                }
-              })
-            )
-            await new Promise(resolve => setTimeout(resolve, 1000))
+                })
+              )
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+            logger.success(`Sync refresh completed: ${refreshStatus.refreshedSources}/${refreshStatus.totalSources} sources refreshed`)
+          } finally {
+            refreshStatus.isRefreshing = false
           }
         }
+      }
+    } else if (forceRefresh && refreshStatus.isRefreshing) {
+      logger.info('Refresh already in progress, returning current data')
+      return {
+        status: "refreshing",
+        message: "Refresh in progress, returning current data",
+        progress: Math.round((refreshStatus.refreshedSources / refreshStatus.totalSources) * 100),
+        refreshedSources: refreshStatus.refreshedSources,
+        totalSources: refreshStatus.totalSources
       }
     }
 
