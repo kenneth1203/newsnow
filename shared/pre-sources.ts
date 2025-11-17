@@ -214,6 +214,16 @@ export const originSources = {
         interval: Time.Realtime,
         type: "hottest",
       },
+      hotstockhk: {
+        title: "热门股票hk",
+        interval: Time.Realtime,
+        type: "hottest",
+      },
+      hotstockus: {
+        title: "热门股票us",
+        interval: Time.Realtime,
+        type: "hottest",
+      },
     },
   },
   "gelonghui": {
