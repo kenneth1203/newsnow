@@ -95,13 +95,15 @@ export const originSources = {
     name: "36氪",
     type: "realtime",
     color: "blue",
-    // cloudflare pages cannot access
-    disable: "cf",
     home: "https://36kr.com",
     column: "tech",
     sub: {
       quick: {
         title: "快讯",
+      },
+      renqi: {
+        type: "hottest",
+        title: "人气榜",
       },
     },
   },
@@ -438,6 +440,58 @@ export const originSources = {
     color: "blue",
     type: "hottest",
     home: "https://store.steampowered.com",
+  },
+  "tencent": {
+    name: "腾讯新闻",
+    column: "china",
+    color: "blue",
+    home: "https://news.qq.com",
+    sub: {
+      hot: {
+        title: "综合早报",
+        type: "hottest",
+        interval: Time.Common,
+        home: "https://news.qq.com/tag/aEWqxLtdgmQ=",
+      },
+    },
+  },
+  "freebuf": {
+    name: "Freebuf",
+    column: "china",
+    title: "网络安全",
+    color: "green",
+    type: "hottest",
+    home: "https://www.freebuf.com/",
+  },
+
+  "qqvideo": {
+    name: "腾讯视频",
+    column: "china",
+    color: "blue",
+    home: "https://v.qq.com/",
+    sub: {
+      "tv-hotsearch": {
+        title: "热搜榜",
+        type: "hottest",
+        interval: Time.Common,
+        home: "https://v.qq.com/channel/tv",
+
+      },
+    },
+  },
+  "iqiyi": {
+    name: "爱奇艺",
+    column: "china",
+    color: "green",
+    home: "https://www.iqiyi.com",
+    sub: {
+      "hot-ranklist": {
+        title: "热播榜",
+        type: "hottest",
+        interval: Time.Common,
+        home: "https://www.iqiyi.com",
+      },
+    },
   },
 } as const satisfies Record<string, OriginSource>
 
